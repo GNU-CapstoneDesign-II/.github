@@ -95,16 +95,11 @@ https://github.com/user-attachments/assets/d641c86f-af3d-4a20-a531-57fc4a323d57
 
 ## 🏗️ 시스템 아키텍처(개요)
 
-```
-[Frontend]  <——REST——>  [Backend: Spring Boot]  <——HTTP——>  [AI Server: FastAPI]
-                                   │
-                                   └——> [DB: __MySQL/PostgreSQL 등__] (+ __Redis 여부__)
-```
+<img width="6556" height="3420" alt="시스템 아키텍처" src="https://github.com/user-attachments/assets/ebc4cf61-2cf2-4671-a66e-8ea30fe5d003" />
 
-* 백엔드(SB)는 **인증/도메인 API/통계**를 제공
-* FastAPI는 **텍스트/PDF 문제 생성 및 상태 모니터링** 제공
+* 백엔드(SB)는 **인증/도메인 API/문제집 관리/통계**를 제공
+* FastAPI는 **텍스트/PDF 문제 생성** 제공
 
-> 아키텍처 다이어그램 이미지: `__IMG_URL__`
 
 ---
 
