@@ -5,6 +5,10 @@ on:
       image_name: { required: true, type: string }
       context:    { required: true, type: string }
       dockerfile: { required: true, type: string }
+      skip_java_tests:
+        required: false
+        type: boolean
+        default: true
     secrets:
       DOCKERHUB_USERNAME: { required: true }
       DOCKERHUB_TOKEN:    { required: true }
@@ -28,10 +32,18 @@ jobs:
         if: ${{ hashFiles(format('{0}/gradlew', inputs.context)) != '' }}
         run: chmod +x "${{ inputs.context }}/gradlew"
 
+      # 스프링 테스트 실행 (toggle off일 때만)
       - name: Gradle tests
-        if: ${{ hashFiles(format('{0}/build.gradle*', inputs.context)) != '' }}
+        if: ${{ hashFiles(format('{0}/build.gradle*', inputs.context)) != '' && !inputs.skip_java_tests }}
         working-directory: ${{ inputs.context }}
         run: ./gradlew clean test
+      
+      # 스프링 테스트 스킵 (toggle on일 때)
+      - name: Gradle build (skip tests)
+        if: ${{ hashFiles(format('{0}/build.gradle*', inputs.context)) != '' && inputs.skip_java_tests }}
+        working-directory: ${{ inputs.context }}
+        run: ./gradlew clean build -x test
+
 
       # Python 감지 → 테스트
       - name: Set up Python
