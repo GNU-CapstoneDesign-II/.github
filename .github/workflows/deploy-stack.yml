@@ -24,6 +24,7 @@ jobs:
             set -euo pipefail
             STACK_DIR="${{ inputs.stack_dir }}"
             SEC_DIR="$STACK_DIR/secrets"
+            CFG_DIR="$STACK_DIR/config"
             LOG_FASTAPI_DIR="$STACK_DIR/logs/fastapi"
             LOG_SPRING_DIR="$STACK_DIR/logs/spring"
             
@@ -38,10 +39,11 @@ jobs:
             EOF
             sudo chmod 600 "$SEC_DIR/fastapi.env"
 
-            sudo tee "$SEC_DIR/spring.env" >/dev/null <<'EOF'
-            ${{ secrets.SPRING_ENV_FILE }}
+            # 3B) application-prod.yml (멀티라인 시크릿 → 파일)
+            sudo tee "$CFG_DIR/application-prod.yml" >/dev/null <<'EOF'
+            ${{ secrets.SPRING_APP_PROD_YML }}
             EOF
-            sudo chmod 600 "$SEC_DIR/spring.env"
+            sudo chmod 600 "$CFG_DIR/application-prod.yml"
 
             # Force Spring file logging if not present
             grep -q '^LOGGING_FILE_PATH=' "$SEC_DIR/spring.env" || echo 'LOGGING_FILE_PATH=/app/logs' | sudo tee -a "$SEC_DIR/spring.env" >/dev/null
@@ -70,9 +72,11 @@ jobs:
                 image: ${{ inputs.image_app_be }}:latest
                 container_name: spring_backend
                 ports: [ "8080:8080" ]
-                env_file: [ "./secrets/spring.env" ]
+                environment:
+                  - SPRING_PROFILES_ACTIVE=prod
                 volumes:
                   - "$LOG_SPRING_DIR:/app/logs"
+                  - "$CFG_DIR:/app/config:ro"
                 depends_on:
                   fastapi_backend:
                     condition: service_healthy
