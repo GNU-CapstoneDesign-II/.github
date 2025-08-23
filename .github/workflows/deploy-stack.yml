@@ -112,8 +112,8 @@ jobs:
 
             set +e
             ok=true
-            wait_healthy fastapi_backend 30 || ok=false
-            wait_healthy spring_backend 30  || ok=false
+            wait_healthy fastapi_backend 120 || ok=false
+            wait_healthy spring_backend 180  || ok=false
             set -e
 
             if [ "$ok" != "true" ]; then
