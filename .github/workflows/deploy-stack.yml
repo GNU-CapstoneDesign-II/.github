@@ -1,0 +1,46 @@
+name: reusable - deploy stack
+on:
+  workflow_call:
+    inputs:
+      image_app_ai: { required: true, type: string }
+      image_app_be: { required: true, type: string }
+      stack_dir:    { required: false, type: string, default: $HOME/stack }
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-g-learn-e
+      cancel-in-progress: false
+    steps:
+      - name: SSH & deploy both apps
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host:     ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key:      ${{ secrets.SSH_KEY }}
+          port:     ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -euo pipefail
+            STACK_DIR="${{ inputs.stack_dir }}"
+            SEC_DIR="$STACK_DIR/secrets"
+            mkdir -p "$SEC_DIR"
+
+            # 1) Docker Hub 로그인
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | sudo docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+            # 2) 멀티라인 시크릿 → 서버 env 파일로 생성
+            sudo tee "$SEC_DIR/fastapi.env" >/dev/null <<'EOF'
+            ${{ secrets.FASTAPI_ENV_FILE }}
+            EOF
+            sudo chmod 600 "$SEC_DIR/fastapi.env"
+
+            sudo tee "$SEC_DIR/spring.env" >/dev/null <<'EOF'
+            ${{ secrets.SPRING_ENV_FILE }}
+            EOF
+            sudo chmod 600 "$SEC_DIR/spring.env"
+
+            # 3) (compose.yml은 서버에 준비되어 있다고 가정)
+            sudo docker compose -f "$STACK_DIR/compose.yml" pull
+            sudo docker compose -f "$STACK_DIR/compose.yml" up -d --pull always --force-recreate
+            sudo docker image prune -f
