@@ -34,13 +34,13 @@ jobs:
 
             # 2) 멀티라인 시크릿 → 서버 env 파일로 생성
             sudo tee "$SEC_DIR/fastapi.env" >/dev/null <<'EOF'
-            ${{ secrets.FASTAPI_ENV_FILE }}
-            EOF
+${{ secrets.FASTAPI_ENV_FILE }}
+EOF
             sudo chmod 600 "$SEC_DIR/fastapi.env"
 
             sudo tee "$SEC_DIR/spring.env" >/dev/null <<'EOF'
-            ${{ secrets.SPRING_ENV_FILE }}
-            EOF
+${{ secrets.SPRING_ENV_FILE }}
+EOF
             sudo chmod 600 "$SEC_DIR/spring.env"
 
             # Force Spring file logging if not present
@@ -48,38 +48,38 @@ jobs:
 
             # 3) AUTO-GENERATE compose.yml (no version key; Compose V2)
             sudo tee "$STACK_DIR/compose.yml" >/dev/null <<YAML
-            services:
-              fastapi_backend:
-                image: ${{ inputs.image_app_ai }}:latest
-                container_name: fastapi_backend
-                ports: [ "8000:8000" ]
-                env_file: [ "./secrets/fastapi.env" ]
-                volumes:
-                  - "$LOG_FASTAPI_DIR:/app/logs"
-                restart: unless-stopped
-                logging: { driver: json-file, options: { max-size: "10m", max-file: "5" } }
-                extra_hosts: [ "host.docker.internal:host-gateway" ]
-                healthcheck:
-                  # TCP 포트 오픈만 확인
-                  test: ["CMD-SHELL","nc -z localhost 8000 || exit 1"]
-                  interval: 5s
-                  timeout: 3s
-                  retries: 30
-                  
-              spring_backend:
-                image: ${{ inputs.image_app_be }}:latest
-                container_name: spring_backend
-                ports: [ "8080:8080" ]
-                env_file: [ "./secrets/spring.env" ]
-                volumes:
-                  - "$LOG_SPRING_DIR:/app/logs"
-                depends_on:
-                  fastapi_backend:
-                    condition: service_healthy
-                restart: unless-stopped
-                logging: { driver: json-file, options: { max-size: "10m", max-file: "5" } }
-                extra_hosts: [ "host.docker.internal:host-gateway" ]
-            YAML
+services:
+  fastapi_backend:
+    image: ${{ inputs.image_app_ai }}:latest
+    container_name: fastapi_backend
+    ports: [ "8000:8000" ]
+    env_file: [ "./secrets/fastapi.env" ]
+    volumes:
+      - "$LOG_FASTAPI_DIR:/app/logs"
+    restart: unless-stopped
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "5" } }
+    extra_hosts: [ "host.docker.internal:host-gateway" ]
+    healthcheck:
+      # TCP 포트 오픈만 확인
+      test: ["CMD-SHELL","nc -z localhost 8000 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      
+  spring_backend:
+    image: ${{ inputs.image_app_be }}:latest
+    container_name: spring_backend
+    ports: [ "8080:8080" ]
+    env_file: [ "./secrets/spring.env" ]
+    volumes:
+      - "$LOG_SPRING_DIR:/app/logs"
+    depends_on:
+      fastapi_backend:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "5" } }
+    extra_hosts: [ "host.docker.internal:host-gateway" ]
+YAML
 
             # 4) Deploy (always replace both)
             sudo docker compose -f "$STACK_DIR/compose.yml" pull
