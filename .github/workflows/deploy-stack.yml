@@ -27,7 +27,7 @@ jobs:
             LOG_FASTAPI_DIR="$STACK_DIR/logs/fastapi"
             LOG_SPRING_DIR="$STACK_DIR/logs/spring"
             
-            sudo install -d -m 744 "$STACK_DIR" "$SEC_DIR" "$CFG_DIR" "$LOG_FASTAPI_DIR" "$LOG_SPRING_DIR"
+            sudo install -d -m 744 "$STACK_DIR" "$SEC_DIR" "$LOG_FASTAPI_DIR" "$LOG_SPRING_DIR"
 
             # 1) Docker Hub 로그인
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | sudo docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
