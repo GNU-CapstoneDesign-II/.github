@@ -24,7 +24,10 @@ jobs:
             set -euo pipefail
             STACK_DIR="${{ inputs.stack_dir }}"
             SEC_DIR="$STACK_DIR/secrets"
-            mkdir -p "$SEC_DIR"
+            LOG_FASTAPI_DIR="$STACK_DIR/logs/fastapi"
+            LOG_SPRING_DIR="$STACK_DIR/logs/spring"
+            
+            mkdir -p "$SEC_DIR" "$LOG_FASTAPI_DIR" "$LOG_SPRING_DIR"
 
             # 1) Docker Hub 로그인
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | sudo docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
@@ -40,7 +43,47 @@ jobs:
             EOF
             sudo chmod 600 "$SEC_DIR/spring.env"
 
-            # 3) (compose.yml은 서버에 준비되어 있다고 가정)
+            # Force Spring file logging if not present
+            grep -q '^LOGGING_FILE_PATH=' "$SEC_DIR/spring.env" || echo 'LOGGING_FILE_PATH=/app/logs' | sudo tee -a "$SEC_DIR/spring.env" >/dev/null
+
+            # 3) AUTO-GENERATE compose.yml (no version key; Compose V2)
+            sudo tee "$STACK_DIR/compose.yml" >/dev/null <<YAML
+            services:
+              fastapi_backend:
+                image: ${{ inputs.image_app_ai }}:latest
+                container_name: fastapi_backend
+                ports: [ "8000:8000" ]
+                env_file: [ "./secrets/fastapi.env" ]
+                volumes:
+                  - "$LOG_FASTAPI_DIR:/app/logs"
+                restart: unless-stopped
+                logging: { driver: json-file, options: { max-size: "10m", max-file: "5" } }
+                extra_hosts: [ "host.docker.internal:host-gateway" ]
+                healthcheck:
+                  # TCP 포트 오픈만 확인
+                  test: ["CMD-SHELL","nc -z localhost 8000 || exit 1"]
+                  interval: 5s
+                  timeout: 3s
+                  retries: 30
+                  
+              spring_backend:
+                image: ${{ inputs.image_app_be }}:latest
+                container_name: spring_backend
+                ports: [ "8080:8080" ]
+                env_file: [ "./secrets/spring.env" ]
+                volumes:
+                  - "$LOG_SPRING_DIR:/app/logs"
+                depends_on:
+                  fastapi_backend:
+                    condition: service_healthy
+                restart: unless-stopped
+                logging: { driver: json-file, options: { max-size: "10m", max-file: "5" } }
+                extra_hosts: [ "host.docker.internal:host-gateway" ]
+            YAML
+
+            # 4) Deploy (always replace both)
             sudo docker compose -f "$STACK_DIR/compose.yml" pull
             sudo docker compose -f "$STACK_DIR/compose.yml" up -d --pull always --force-recreate
+
+            # 5) Clean up old images
             sudo docker image prune -f
