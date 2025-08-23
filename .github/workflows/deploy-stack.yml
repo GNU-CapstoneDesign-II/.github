@@ -80,11 +80,11 @@ jobs:
                 logging: { driver: json-file, options: { max-size: "10m", max-file: "5" } }
                 extra_hosts: [ "host.docker.internal:host-gateway" ]
                 healthcheck:
-                  test: ["CMD-SHELL","python - <<'PY'\nimport socket,sys\ns=socket.socket(); s.settimeout(1)\nsys.exit(0 if s.connect_ex(('localhost',8080))==0 else 1)\nPY"]
+                  test: ["CMD-SHELL","curl -sS -o /dev/null --connect-timeout 1 http://localhost:8080 || exit 1"]
                   interval: 5s
                   timeout: 3s
                   retries: 30
-                  start_period: 5s
+                  start_period: 10s
             YAML
 
             # 4) Deploy (always replace both)
@@ -112,8 +112,8 @@ jobs:
 
             set +e
             ok=true
-            wait_healthy fastapi_backend 60 || ok=false
-            wait_healthy spring_backend 60  || ok=false
+            wait_healthy fastapi_backend 30 || ok=false
+            wait_healthy spring_backend 30  || ok=false
             set -e
 
             if [ "$ok" != "true" ]; then
