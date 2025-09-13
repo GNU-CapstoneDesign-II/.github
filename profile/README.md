@@ -7,14 +7,6 @@
 
 ---
 
-## Main
-
-* **홈페이지**: `__URL__`
-* **Swagger (백엔드)**: `__URL__`
-* **노션**: `__URL__`
-
----
-
 ## 데모 영상
 
 https://github.com/user-attachments/assets/d641c86f-af3d-4a20-a531-57fc4a323d57
